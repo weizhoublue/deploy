@@ -26,7 +26,7 @@ cilium/
 
     （2）确保已经安装了 K8S 集群（例如已经安装了 calico，或者没有安装任何网络插件）
 
-    （3）确保 grafana 和 prometheus 已经安装（后续步骤，需要它们安装了 CRD）
+    （3）确保 grafana 和 prometheus 已经安装（后续步骤，需要依赖集群中已经安装了 grafana 和 prometheus 的 CRD ）
 
 * 步骤2，安装 cilium
 
