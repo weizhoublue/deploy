@@ -26,8 +26,6 @@ cilium/
 
     （2）确保已经安装了 K8S 集群（例如已经安装了 calico，或者没有安装任何网络插件）
 
-    （3）确保 grafana 和 prometheus 已经安装（后续步骤，需要依赖集群中已经安装了 grafana 和 prometheus 的 CRD ）
-
 * 步骤2，安装 cilium
 
     进入工程的 cilium 子目录下，运行如下命令，它会完成 CLI 的安装，以及 chart 的安装，并且，该脚本执行过程中，也会尝试卸载 calico
@@ -53,7 +51,8 @@ cilium/
 > * DISABLE_KUBE_PROXY 指示了是否要禁用 kube-proxy，建议为 false。cilium 已经完全实现了 service 解析，kube proxy 已经没有工作的需求的，而建议保留它，是可让 kube proxy 用于搭配 metallb 来实现 LoadBalancer 能力（目前，cilium 的 LoadBalancer 功能存在一些限制，不推荐 ）
 > * cilium 遵循 K8S 集群的 clusterIP CIDR 设置。并且，cilium 在实现多集群互联时，允许不同集群的 clusterIP CIDR 是重叠的
 
-* 步骤3，如果之前安装过 calico 等 CNI ，为了实现清除它们的 iptables 规则， 可以考虑把所有主机重启，确保 ciium 在一个干净的环境中工作 
+* 步骤3，如果之前安装过 calico 等 CNI ，为了实现清除它们的 iptables 规则， 可以考虑把所有主机重启，确保 ciium 在一个干净的环境中工作 。
+    并且，重启主机可以让所有的 POD 重启，接入 cilium 的网络 。
 
 * 步骤4，完成 cilium 安装后，可运行如下命令，查看本集群 cilium 的状态
 
@@ -63,9 +62,11 @@ cilium/
 
     完成安装后，可通过 CLUSTERMESH_APISERVER_NODEPORT 的 nodePort 访问cilium 的报文可观测性 GUI
 
-* 步骤5，开启 cilium 的指标和 grafana 面板
+* 步骤5，可选，开启 cilium 的指标和 grafana 面板
 
-    进入工程的 cilium 子目录下，运行如下命令，它会完成指标的开启，以及观测面板的开启
+    （1）确保安装 grafana 和 prometheus （需要依赖集群中已经安装了 grafana 和 prometheus 的 CRD ）
+
+    （2）进入工程的 cilium 子目录下，运行如下命令，它会完成指标的开启，以及观测面板的开启
 
     ```bash
     ./setupMetrics.sh
@@ -90,5 +91,3 @@ cilium/
     ```bash
     ./showClusterMesh.sh
     ```
-
-
