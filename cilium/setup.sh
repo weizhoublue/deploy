@@ -9,7 +9,6 @@
 CLUSTER_ID
   # clusters and in the range of 1 to 255. Only required for Cluster Mesh,
   # may be 0 if Cluster Mesh is not used.
-
 POD_v4CIDR="172.70.0.0/16" \
     POD_v4Block="24" \
     ENABLE_IPV6="true" \
@@ -22,6 +21,7 @@ POD_v4CIDR="172.70.0.0/16" \
     HUBBLE_WEBUI_NODEPORT_PORT="30000" \
     CLUSTERMESH_APISERVER_NODEPORT="31000" \
     DISABLE_KUBE_PROXY="true" \
+    UNINSTALL_OLD_CILIUM_CRD="true" \
     ./setup.sh
 
 安装要求 
@@ -113,7 +113,9 @@ HUBBLE_WEBUI_NODEPORT_PORT=${HUBBLE_WEBUI_NODEPORT_PORT:-"30000"}
 
 export KUBECONFIG=${KUBECONFIG:-"/root/.kube/config"}
 
-DISABLE_KUBE_PROXY=${DISABLE_KUBE_PROXY:-"false"}
+DISABLE_KUBE_PROXY=${DISABLE_KUBE_PROXY:-"true"}
+
+UNINSTALL_OLD_CILIUM_CRD=${UNINSTALL_OLD_CILIUM_CRD:-"false"}
 
 echo "KUBECONFIG=${KUBECONFIG}"
 echo "INSTANCE_NAME=${INSTANCE_NAME}"
@@ -128,7 +130,7 @@ echo "CLUSTER_ID=${CLUSTER_ID}"
 echo "K8S_API_IP=${K8S_API_IP}"
 echo "K8S_API_PORT=${K8S_API_PORT}"
 echo "HUBBLE_WEBUI_NODEPORT_PORT=${HUBBLE_WEBUI_NODEPORT_PORT}"
-
+echo "UNINSTALL_OLD_CILIUM_CRD=${UNINSTALL_OLD_CILIUM_CRD}"
 
 #===================  uninstall 
 
@@ -220,16 +222,31 @@ if [ -n "${CILIUM_CLI_VERSION}" ] ; then
 fi 
 
 
-#======================================= others
+#======================================= uninstall
 
 kubectl delete deployment  -n kube-system   calico-kube-controllers &>/dev/null || true
 kubectl delete daemonset  -n kube-system   calico-node &>/dev/null || true
-kubectl delete  -n kube-system Secret cilium-ca || true
+
+
+helm uninstall -n ${NAMESPACE} ${INSTANCE_NAME}  || true
+kubectl delete -n ${NAMESPACE} Secret clustermesh-apiserver-admin-cert || true
+kubectl delete -n ${NAMESPACE} Secret clustermesh-apiserver-local-cert || true
+kubectl delete -n ${NAMESPACE} Secret clustermesh-apiserver-remote-cert || true
+kubectl delete -n ${NAMESPACE} Secret clustermesh-apiserver-server-cert || true
+kubectl delete -n ${NAMESPACE} Secret hubble-relay-client-certs || true
+kubectl delete -n ${NAMESPACE} Secret hubble-server-certs || true
+kubectl delete -n ${NAMESPACE} Secret cilium-ca || true
+
+if [ "${UNINSTALL_OLD_CILIUM_CRD}" = "true" ] ; then
+    CRD_LIST=$( kubectl get crd | grep "cilium.io" | awk '{print $1}' ) || true
+    for crd in ${CRD_LIST} ; do
+        kubectl delete crd ${crd} || true
+    done
+fi
 
 
 #============================================== set your code following
 
-helm uninstall -n ${NAMESPACE} ${INSTANCE_NAME}  || true
 
 #( kubectl get pod -n cilium-spire | sed '1 d' | awk '{print $1}' | xargs -n 1 -i kubectl delete pod -n cilium-spire {} --force ) || true
 #( kubectl get pod -n kube-system | grep cilium | sed '1 d' | awk '{print $1}' | xargs -n 1 -i kubectl delete pod -n cilium-spire {} --force ) || true
@@ -600,6 +617,8 @@ hubble:
     auto:
       enabled: true
       method: cronJob
+      # in days
+      certValidityDuration: 36500
   
   relay:
     enabled: true
@@ -643,6 +662,10 @@ clustermesh:
   enableEndpointSliceSynchronization: true
   enableMCSAPISupport: false
   apiserver:
+    tls:
+      auto:
+        # in days
+        certValidityDuration: 36500
     service:
       type: NodePort
       # WARNING: make sure to configure a different NodePort in each cluster if
@@ -655,6 +678,11 @@ clustermesh:
             - matchExpressions:
               - key: node-role.kubernetes.io/control-plane
                 operator: Exists
+
+tls:
+  ca:
+    # in days
+    certValidityDuration: 36500
 
 # operator:
 #   affinity:
@@ -706,6 +734,7 @@ fi
 
 # #=========================
 
+# :<<EOF
 # echo "-- restart all pods after uninstall calico"
 # ALL_POD=` kubectl  get pod -A -o wide | sed '1 d' | awk '{print $1,$2}' | tr ' ' ',' `
 # for POD in ${ALL_POD} ; do
@@ -723,3 +752,4 @@ fi
 
 # timeout 500 kubectl wait --for=condition=ready -l app.kubernetes.io/part-of=cilium \
 #     --timeout=500s pod -n kube-system
+# EOF
