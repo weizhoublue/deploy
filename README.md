@@ -38,6 +38,7 @@ cilium/
     K8S_API_IP="10.0.1.11" K8S_API_PORT="6443" \
     HUBBLE_WEBUI_NODEPORT_PORT="31000" \
     DISABLE_KUBE_PROXY="false" \
+    UNINSTALL_OLD_CILIUM_CRD="true" \
     ./setup.sh
     ```
 
@@ -49,6 +50,7 @@ cilium/
 > * K8S_API_IP 和 K8S_API_PORT 表示本集群 Kubernetes API 服务器的地址，它用于在不需要 kube-proxy 时，cilium 也能访问 api server，为集群提供 service 能力。因此，这个地址不能是 clusterIP，而必须是单个主机的 Kubernetes API 服务器的物理地址，或者通过 keepalived 等工具实现的高可用地址。
 > * HUBBLE_WEBUI_NODEPORT_PORT 是 cilium 的可观测性 GUI 的 nodePort 号，可手动指定一个在合法的 nodePort 范围内的地址（通常在 30000-32767 ）
 > * DISABLE_KUBE_PROXY 指示了是否要禁用 kube-proxy，建议为 false。cilium 已经完全实现了 service 解析，kube proxy 已经没有工作的需求的，而建议保留它，是可让 kube proxy 用于搭配 metallb 来实现 LoadBalancer 能力（目前，cilium 的 LoadBalancer 功能存在一些限制，不推荐 ）
+> * UNINSTALL_OLD_CILIUM_CRD 指示了是否要卸载旧版本的 cilium CRD .  本脚本在运行时，会尝试 helm uninstall 集群中的存在的老 cilium 安装，因为 helm uninstall 不会卸载 CRD，因此，提供本变量来进行单独处理。老 CRD 的残留会出现的问题，例如，老的 POD cidr 会继续生效，不会遵循新安装中指定的 CIDR
 > * cilium 遵循 K8S 集群的 clusterIP CIDR 设置。并且，cilium 在实现多集群互联时，允许不同集群的 clusterIP CIDR 是重叠的
 
 * 步骤3，如果之前安装过 calico 等 CNI ，为了实现清除它们的 iptables 规则， 可以考虑把所有主机重启，确保 ciium 在一个干净的环境中工作 。
