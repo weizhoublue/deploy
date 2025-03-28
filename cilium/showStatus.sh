@@ -27,6 +27,14 @@ echo "hubble list  nodes"
 hubble list  nodes
 
 
+echo ""
+echo "hubble WEBUI address:"
+kubectl get service -n ${CILIUM_NS} hubble-ui
+
+
+echo ""
+echo "clusterMesh export address:"
+kubectl get service -n ${CILIUM_NS}  clustermesh-apiserver
 
 echo ""
 echo "===================================== show policy enforcement mode ==================================="
